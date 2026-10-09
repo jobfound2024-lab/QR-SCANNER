@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lakshya Olympiad QR Scanner</title>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f4f7f6;
+    }
+
+    h2 { color: #1a237e; }
+
+    #reader {
+      width: 100%;
+      max-width: 450px;
+      margin: 20px auto;
+      background: white;
+    }
+
+    #status {
+      margin: 15px auto;
+      max-width: 450px;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>Lakshya Olympiad 2.0</h2>
+  <p>Student ka QR code camera ke saamne rakhein.</p>
+  <div id="reader"></div>
+  <p id="status">Camera start ho raha hai...</p>
+
+  <script>
+    var scanner;
+    var scanned = false;
+
+    function status(message) {
+      document.getElementById("status").textContent = message;
+    }
+
+    function onScanSuccess(decodedText) {
+      if (scanned) return;
+      scanned = true;
+
+      status("QR scan successful. Attendance process ho rahi hai...");
+
+      scanner.stop().catch(function() {}).finally(function() {
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({
+            type: "LAKSHYA_QR_SCANNED",
+            studentId: String(decodedText).trim()
+          }, "*");
+
+          status("QR mil gaya. Is window ko band kar sakte hain.");
+        } else {
+          scanned = false;
+          status("Main Lakshya page nahi mila. Scanner ko main page ke button se kholein.");
+        }
+      });
+    }
+
+    function start() {
+      if (!window.isSecureContext || !navigator.mediaDevices) {
+        status("Camera ke liye HTTPS website aur supported browser zaroori hain.");
+        return;
+      }
+
+      scanner = new Html5Qrcode("reader");
+
+      scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess
+      ).then(function() {
+        status("Camera ready. Ab QR code scan karein.");
+      }).catch(function(error) {
+        status("Camera start nahi hua: " + error);
+      });
+    }
+
+    window.addEventListener("beforeunload", function() {
+      if (scanner && scanner.isScanning) {
+        scanner.stop().catch(function() {});
+      }
+    });
+
+    start();
+  </script>
+</body>
+</html>
